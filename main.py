@@ -17,22 +17,48 @@ API_HEADERS = {
 	"x-rapidapi-key": API_KEY 
 }
 
-
-# get league fixtures     
 def get_fixtures(league_id, season):
-    fixture_url = f"{BASE_URL}/fixtures?league={league_id}&season={season}"
-    response = requests.get(url=fixture_url,headers=API_HEADERS, verify=False)
-    # check for response status
-    if response.status_code == 200:
-        data = response.json()
-        return  data["response"]
-    else:
-        print(f"Error fetching fixture: {response.status_code}")
-        return None
+   '''Description:: 
+            Function gets all season fixtures from the Api-Football api.   
+      Parameters:: 
+            str: League ID - refer to the API for the applicable IDs
+            int: Season - refer to the API for available seasons
+      Outputs:: 
+            Function returns the api response with list of all fixtures in the specified season and league. 
+      Error Handling:: 
+            1. If api response=200 (Ok), return the api response data in a json formatt
+            2. If api response=204 (No Content), returns the status code
+            3. If api response=499 (Time Out), returns the status code
+            4. If api response=500 (Internal Server Error), returns the ststus code
+   '''
+   # create an api endpoint using the base url, league_id, 
+   fixture_url = f"{BASE_URL}/fixtures?league={league_id}&season={season}"
+   response = requests.get(url=fixture_url,headers=API_HEADERS, verify=False) # send a get request to the api
+
+   # api response status check
+   if response.status_code == 200:
+      data = response.json()
+      return  data["response"]
+   elif response.status_code == 204:
+      return f"No content found: Error code {response.status_code}."
+   elif response.status_code == 499:
+      return f"Time out: Error code {response.status_code}."
+   else:
+      return f"Internal server error: Error code {response.status_code}."
 
 def convert_fixtures_to_dataframe(all_fixtures): 
+   '''Description::
+            Function converts fixtures data into a pandas  dataframe
+      Parameters::
+            Dict: all_fixtures - A json dictionary 
+      Outputs::
+            DataFrame with fixture data
+   '''
+   # create an empty list 
    fixture_data = []
+   # loop through all_fixtures and extract the relevant data points
    for fixture in all_fixtures:
+      # append the relevant data points into defined empty list
       fixture_data.append({
          "Fixture ID": fixture['fixture']['id'], 
          "Date": fixture['fixture']['date'], 
@@ -50,7 +76,7 @@ def convert_fixtures_to_dataframe(all_fixtures):
 def get_team_statistics(season_id, team_id, league_id):
    stats_url = f"{BASE_URL}/teams/statistics?season={season_id}&team={team_id}&league={league_id}"   # ?season=2019&team=33&league=39
    response = requests.get(url=stats_url, headers=API_HEADERS, verify=False)
-   # check if the call succeeded
+   # check if the api request has succeeded
    if response:
       data = response.json()
       return data["response"]
@@ -61,7 +87,6 @@ def get_list_of_teams(season_id, league_id):
    teams_url = f"{BASE_URL}/teams?league={league_id}&season={season_id}"
    response = requests.get(url=teams_url,headers=API_HEADERS, verify=False)
    teams_data = response.json()["response"]
-
    teams_venue_info = []
    # extact team name and id
    for i in range(0,len(teams_data)):
@@ -75,12 +100,23 @@ def get_list_of_teams(season_id, league_id):
       "Stadium Capacity": teams_data[i]["venue"]["capacity"]
          }
       )   
-   return teams_venue_info 
+   return pd.DataFrame(teams_venue_info) 
       
 # extract the stats into a dataframe
 def get_stats_for_all_teams(list_of_teams):
+   '''
+      Description::
+            Function gets stats for all the teams in the specified league and season
+      Parameters::
+            List:  list_of_teams 
+      Outputs::
+            List: stats_data_for_teams, a list of dictinaries
+   '''
+   # defined an empty list
    stats_data_for_teams = []
+   # loop through the list_of_teams and extract the relevant data points
    for team in list_of_teams:
+      # declare the following variables as parameters to the "get_team_statistics" function
       teamID = team["Team ID"]
       seasonID = 2020
       leagueID = team["League ID"]
@@ -92,8 +128,18 @@ def get_stats_for_all_teams(list_of_teams):
 
 # convert stats into a daframe
 def convert_stats_into_dataframe(all_teams_stats):
+   '''Description::
+            Function converts stats data into a pandas  dataframe
+      Parameters::
+            Dict: all_teams_stats, a json dictionary 
+      Outputs::
+            DataFrame with stats data
+   '''
+   # define an empty list
    final_stats = []
+   # loop through all_teams_stats and extract the relevant data points
    for one_team_stats in all_teams_stats:
+      # append the relevant data points into the defined empty list
       final_stats.append({
          "Team ID": one_team_stats["team"]["id"],
          "Team Name": one_team_stats["team"]["name"],
@@ -149,29 +195,33 @@ def convert_stats_into_dataframe(all_teams_stats):
          "Red Cards (91-105)":one_team_stats["cards"]["red"]["91-105"]["percentage"],
       })
    return pd.DataFrame(final_stats)
-
-# # get specific predictions for league fixtures
-# def get_prediction(fixture_id):
-#     predictions_url = f"{BASE_URL}/predictions?fixture={fixture_id}"
-#     response = requests.get(url= predictions_url, headers=API_HEADERS, verify=False)
-#     # check for response status
-#     if response.status_code == 200:
-#         data = response.json()
-#         predictions = data["response"]
-#         return predictions
-#     else:
-#         print(f"Error fetching prediction: {response.status_code}")
-#         return None  
+  
     
-# # Append new predictions to csv
-# def save_predictions_to_csv(predictions, output_file):
-#    df = pd.DataFrame(predictions)
-#    if os.path.exists(output_file):
-#       df.to_csv(output_file, mode="a", index=False, header=False) # append without header
-#    else:
-#       df.to_csv(output_file, index=False) # create new file with header
+# Append new predictions to csv
+def save_stats_dataframe_to_csv(stats_dict, output_file):
+   df = pd.DataFrame(stats_dict)
+   if os.path.exists(stats_output_file):
+      df.to_csv(stats_output_file, mode="a", index=False, header=False) # append without header
+   else:
+      df.to_csv(stats_output_file, index=False) # create new file with header
 
-# # fetch predictions for remaining fixturs
+
+ 
+# main script execution
+if __name__ == "__main__":
+   league_id = 39
+   team_id = 42
+   season = 2020
+   stats_output_file = "premier_league_team_stats.csv"
+
+   # fetch list of teams in a season
+   team_list = get_list_of_teams(season_id=season, league_id=league_id)
+   #print(team_list)
+   print(convert_stats_into_dataframe(get_stats_for_all_teams(team_list)))
+  
+# -----------------RESERVED IDEAS---------------------------------------------  
+
+# # fetch predictions for remaining fixtures
 # def get_remaining_predictions(fixtures, processed_fixture_ids, max_calls=5):
 #    predictions_data = []
 #    calls_made = 0
@@ -199,16 +249,10 @@ def convert_stats_into_dataframe(all_teams_stats):
    
 # def prediction_data_to_dataframe(data):
 #       df = pd.DataFrame(data)
-#       return df
- 
-# main 
-if __name__ == "__main__":
-   league_id = 39
-   team_id = 42
-   season = 2020
-   output_file = "premier_league_predictions.csv"
-
-   # fetch all fixtures 
+#       return df 
+       
+   
+ # fetch all fixtures 
    # fixtures = get_fixtures(league_id, season)
    # print(convert_fixtures_to_dataframe(fixtures))
    #print(f"Fixtures: {fixtures}")
@@ -216,26 +260,3 @@ if __name__ == "__main__":
    # fetch team stats
    # stats = get_team_statistics(season, team_id, league_id)
    # print(stats)
-
-  
-   # fetch list of teams in a season
-   team_list = get_list_of_teams(season_id=season, league_id=league_id)
-   #print(team_list)
-   print(convert_stats_into_dataframe(get_stats_for_all_teams(team_list)))
-  
-   # # load processed fixture ids from existing csv
-   # if os.path.exists(output_file):
-   #     processed_df = pd.read_csv(output_file)
-   #     processed_df_fixture_id = processed_df["Fixture ID"].tolist()
-   # else:
-   #     processed_df_fixture_id = []
-
-   # predictions = get_remaining_predictions(fixtures,processed_df_fixture_id, max_calls=5)
-
-   # if predictions:
-   #    save_predictions_to_csv(predictions, output_file)
-   #    print(f"Save {len(predictions)} predictions to {output_file}")
-   # else:
-   #     print("No new predictions added.")
-       
-   
