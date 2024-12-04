@@ -2,8 +2,9 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import requests
-import time
-import os
+from pyarrow import json
+import pyarrow.parquet as pq
+import json
 
 # create the url for the api-football site
 BASE_URL = "https://v3.football.api-sports.io"
@@ -73,16 +74,6 @@ def convert_fixtures_to_dataframe(all_fixtures):
       )
    return pd.DataFrame(fixture_data)
 
-def get_team_statistics(season_id, team_id, league_id):
-   stats_url = f"{BASE_URL}/teams/statistics?season={season_id}&team={team_id}&league={league_id}"   # ?season=2019&team=33&league=39
-   response = requests.get(url=stats_url, headers=API_HEADERS, verify=False)
-   # check if the api request has succeeded
-   if response:
-      data = response.json()
-      return data["response"]
-   else:
-      print("Error fetching the stats.")
-
 def get_list_of_teams(season_id, league_id):
    teams_url = f"{BASE_URL}/teams?league={league_id}&season={season_id}"
    response = requests.get(url=teams_url,headers=API_HEADERS, verify=False)
@@ -101,31 +92,52 @@ def get_list_of_teams(season_id, league_id):
          }
       )   
    return pd.DataFrame(teams_venue_info) 
+
+# def get_team_statistics(season_id, team_id, league_id):
+#    stats_url = f"{BASE_URL}/teams/statistics?season={season_id}&team={team_id}&league={league_id}"
+#    response = requests.get(url=stats_url, headers=API_HEADERS, verify=False)
+#    # check if the api request has succeeded
+#    if response:
+#       data = response.json()
+#       return data["response"]
+#    else:
+#       print("Error fetching the stats.")
+# -----------------START HERE WITH FIXING THE CONNECTION TO GETTING TEAM STATS-------------------------    
+# # extract the stats into a dataframe
+# def get_stats_for_all_teams(list_of_teams,season_id):
+#    '''
+#       Description::
+#             Function gets stats for all the teams in the specified league and season
+#       Parameters::
+#             List:  list_of_teams 
+#       Outputs::
+#             List: stats_data_for_teams, a list of dictinaries
+#    '''
+
+#    # defined an empty list
+#    stats_data_for_teams = []
+#    teamID = list_of_teams["Team ID"]
+#    # loop through the list_of_teams 
+#    for id in teamID:
+#       leagueID = list_of_teams["League ID"]
+#       # loop through the dictionary and extract the relevant data points
       
-# extract the stats into a dataframe
-def get_stats_for_all_teams(list_of_teams):
-   '''
-      Description::
-            Function gets stats for all the teams in the specified league and season
-      Parameters::
-            List:  list_of_teams 
-      Outputs::
-            List: stats_data_for_teams, a list of dictinaries
-   '''
-   # defined an empty list
-   stats_data_for_teams = []
-   # loop through the list_of_teams and extract the relevant data points
-   for team in list_of_teams:
-      # declare the following variables as parameters to the "get_team_statistics" function
-      teamID = team["Team ID"]
-      seasonID = 2020
-      leagueID = team["League ID"]
-      stats_data_for_teams.append(
-         get_team_statistics(season_id=seasonID, team_id=teamID, league_id=leagueID)
-         )
-   return stats_data_for_teams
-
-
+#       # declare the following variables as parameters to the "get_team_statistics" function
+#       stats_url = f"{BASE_URL}/teams/statistics?season={season_id}&team={id}&league={leagueID}"
+#       response = requests.get(url=stats_url, headers=API_HEADERS, verify=False)
+#       data = response.json()
+      
+#       # check if the api request has succeeded
+#       if response.status_code == 200:
+#          data = response.json()
+#          stats_data_for_teams.append(
+#             data["response"]
+            
+#          )  
+#          return stats_data_for_teams 
+#       else:
+#          return f"Error fetching the stats."
+      
 # convert stats into a daframe
 def convert_stats_into_dataframe(all_teams_stats):
    '''Description::
@@ -138,6 +150,7 @@ def convert_stats_into_dataframe(all_teams_stats):
    # define an empty list
    final_stats = []
    # loop through all_teams_stats and extract the relevant data points
+   # for i in range(0, len(all_teams_stats)):
    for one_team_stats in all_teams_stats:
       # append the relevant data points into the defined empty list
       final_stats.append({
@@ -148,8 +161,8 @@ def convert_stats_into_dataframe(all_teams_stats):
          "Played Away": one_team_stats["fixtures"]["played"]["away"],
          "Wins Home": one_team_stats["fixtures"]["wins"]["home"],
          "Wins Away": one_team_stats["fixtures"]["wins"]["away"],
-         "Draw Home": one_team_stats["fixtures"]["draw"]["home"],
-         "Draw Away": one_team_stats["fixtures"]["draw"]["away"],
+         "Draw Home": one_team_stats["fixtures"]["draws"]["home"],
+         "Draw Away": one_team_stats["fixtures"]["draws"]["away"],
          "Loses Home": one_team_stats["fixtures"]["loses"]["home"],
          "Loses Away": one_team_stats["fixtures"]["loses"]["away"],
          "GF Home": one_team_stats["goals"]["for"]["total"]["home"],
@@ -169,7 +182,7 @@ def convert_stats_into_dataframe(all_teams_stats):
          "GA minute (76-90)":one_team_stats["goals"]["against"]["minute"]["76-90"]["percentage"],
          "GA minute (91-105)":one_team_stats["goals"]["against"]["minute"]["91-105"]["percentage"],
          "Biggest Win Streak":one_team_stats["biggest"]["streak"]["wins"],
-         "Biggest Draw Streak":one_team_stats["biggest"]["streak"]["draw"],
+         "Biggest Draw Streak":one_team_stats["biggest"]["streak"]["draws"],
          "Biggest Loses Streak":one_team_stats["biggest"]["streak"]["loses"],
          "Biggest Wins Home":one_team_stats["biggest"]["wins"]["home"],
          "Biggest Wins Away":one_team_stats["biggest"]["wins"]["away"],
@@ -179,7 +192,7 @@ def convert_stats_into_dataframe(all_teams_stats):
          "Clean Sheet Away":one_team_stats["clean_sheet"]["away"],
          "Failed to Score Home":one_team_stats["failed_to_score"]["home"],
          "Failed to Score Away":one_team_stats["failed_to_score"]["away"],
-         "Yellow Cards (0-15)":one_team_stats["cards"]["against"]["0-15"]["percentage"],
+         "Yellow Cards (0-15)":one_team_stats["cards"]["yellow"]["0-15"]["percentage"],
          "Yellow Cards (16-30)":one_team_stats["cards"]["yellow"]["16-30"]["percentage"],
          "Yellow Cards (31-45)":one_team_stats["cards"]["yellow"]["31-45"]["percentage"],
          "Yellow Cards (46-60)":one_team_stats["cards"]["yellow"]["46-60"]["percentage"],
@@ -195,17 +208,7 @@ def convert_stats_into_dataframe(all_teams_stats):
          "Red Cards (91-105)":one_team_stats["cards"]["red"]["91-105"]["percentage"],
       })
    return pd.DataFrame(final_stats)
-  
-    
-# Append new predictions to csv
-def save_stats_dataframe_to_csv(stats_dict, output_file):
-   df = pd.DataFrame(stats_dict)
-   if os.path.exists(stats_output_file):
-      df.to_csv(stats_output_file, mode="a", index=False, header=False) # append without header
-   else:
-      df.to_csv(stats_output_file, index=False) # create new file with header
-
-
+         
  
 # main script execution
 if __name__ == "__main__":
@@ -214,10 +217,45 @@ if __name__ == "__main__":
    season = 2020
    stats_output_file = "premier_league_team_stats.csv"
 
-   # fetch list of teams in a season
-   team_list = get_list_of_teams(season_id=season, league_id=league_id)
-   #print(team_list)
-   print(convert_stats_into_dataframe(get_stats_for_all_teams(team_list)))
+   # fetch list of teams in a season and convering them toa parquet file
+   
+   # team_list_df = get_list_of_teams(season_id=season, league_id=league_id)
+   team_list_df = pd.read_parquet("team_list.parquet")
+   # team_list_df.to_parquet("team_list.parquet", engine="fastparquet")
+   
+
+
+   # # fetch all fixtures dataframe and coonvert to a parquet
+   # fixtures = get_fixtures(league_id, season)
+   # all_fixtures_df = convert_fixtures_to_dataframe(fixtures)
+   # all_fixtures_df.to_parquet("fixtures.parquet", engine="fastparquet")
+
+   # fetch all teams stats
+   #all_teams_stats_df = get_stats_for_all_teams(team_list_df, season)
+   #print(all_teams_stats_df)
+   
+   # convert all teams stats to dataframe
+   
+   # with open('stats.json') as f:
+   #  data = json.load(f)
+   # print(data)
+   #print(convert_stats_into_dataframe(data))
+   data = pd.read_json('stats.json').to_dict('records')
+   #print(convert_stats_into_dataframe(data_df).head())
+   stats_df = convert_stats_into_dataframe(data)
+   stats_df["GF minute (91-105)"] = stats_df["GF minute (91-105)"].astype('|S')
+   stats_df["GA minute (91-105)"] = stats_df["GA minute (91-105)"].astype('|S')
+   stats_df["Biggest Loss Away"] = stats_df["Biggest Loss Away"].astype('|S')
+   stats_df["Yellow Cards (91-105)"] = stats_df["Yellow Cards (91-105)"].astype('|S')
+   stats_df["Red Cards (0-15)"] = stats_df["Red Cards (0-15)"].astype('|S')
+   stats_df["Red Cards (16-30)"] = stats_df["Red Cards (16-30)"].astype('|S')
+   stats_df["Red Cards (31-45)"] = stats_df["Red Cards (31-45)"].astype('|S')
+   stats_df["Red Cards (46-60)"] = stats_df["Red Cards (46-60)"].astype('|S')
+   stats_df["Red Cards (61-75)"] = stats_df["Red Cards (61-75)"].astype('|S')
+   stats_df["Red Cards (76-90)"] = stats_df["Red Cards (76-90)"].astype('|S')
+   
+   stats_df.to_parquet("final_stats.parquet", engine="fastparquet")
+         
   
 # -----------------RESERVED IDEAS---------------------------------------------  
 
@@ -260,3 +298,10 @@ if __name__ == "__main__":
    # fetch team stats
    # stats = get_team_statistics(season, team_id, league_id)
    # print(stats)
+   # # Append new predictions to csv
+# def save_stats_dataframe_to_csv(stats_dict, output_file):
+#    df = pd.DataFrame(stats_dict)
+#    if os.path.exists(stats_output_file):
+#       df.to_csv(stats_output_file, mode="a", index=False, header=False) # append without header
+#    else:
+#       df.to_csv(stats_output_file, index=False) # create new file with header
