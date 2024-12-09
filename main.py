@@ -102,41 +102,42 @@ def get_list_of_teams(season_id, league_id):
 #       return data["response"]
 #    else:
 #       print("Error fetching the stats.")
-# -----------------START HERE WITH FIXING THE CONNECTION TO GETTING TEAM STATS-------------------------    
-# # extract the stats into a dataframe
-# def get_stats_for_all_teams(list_of_teams,season_id):
-#    '''
-#       Description::
-#             Function gets stats for all the teams in the specified league and season
-#       Parameters::
-#             List:  list_of_teams 
-#       Outputs::
-#             List: stats_data_for_teams, a list of dictinaries
-#    '''
 
-#    # defined an empty list
-#    stats_data_for_teams = []
-#    teamID = list_of_teams["Team ID"]
-#    # loop through the list_of_teams 
-#    for id in teamID:
-#       leagueID = list_of_teams["League ID"]
-#       # loop through the dictionary and extract the relevant data points
+# -----------------START HERE WITH FIXING THE CONNECTION TO GETTING TEAM STATS-------------------------    
+# extract the stats into a dataframe
+def get_stats_for_all_teams(list_of_teams,season_id):
+   '''
+      Description::
+            Function gets stats for all the teams in the specified league and season
+      Parameters::
+            List:  list_of_teams 
+      Outputs::
+            List: stats_data_for_teams, a list of dictinaries
+   '''
+
+   # defined an empty list
+   stats_data_for_teams = []
+   teamID = list_of_teams["Team ID"]
+   # loop through the list_of_teams 
+   for id in teamID:
+      # leagueID = list_of_teams["League ID"]
+      leagueID = 39
+      # loop through the dictionary and extract the relevant data points
       
-#       # declare the following variables as parameters to the "get_team_statistics" function
-#       stats_url = f"{BASE_URL}/teams/statistics?season={season_id}&team={id}&league={leagueID}"
-#       response = requests.get(url=stats_url, headers=API_HEADERS, verify=False)
-#       data = response.json()
+      # declare the following variables as parameters to the "get_team_statistics" function
+      stats_url = f"{BASE_URL}/teams/statistics?season={season_id}&team={id}&league={leagueID}"
+      response = requests.get(url=stats_url, headers=API_HEADERS, verify=False)
+      data = response.json()
       
-#       # check if the api request has succeeded
-#       if response.status_code == 200:
-#          data = response.json()
-#          stats_data_for_teams.append(
-#             data["response"]
+      # check if the api request has succeeded
+      if response.status_code == 200:
+         data = response.json()
+         stats_data_for_teams.append(
+            data["response"]
             
-#          )  
-#          return stats_data_for_teams 
-#       else:
-#          return f"Error fetching the stats."
+         )  
+   return stats_data_for_teams 
+   
       
 # convert stats into a daframe
 def convert_stats_into_dataframe(all_teams_stats):
@@ -231,8 +232,8 @@ if __name__ == "__main__":
    # all_fixtures_df.to_parquet("fixtures.parquet", engine="fastparquet")
 
    # fetch all teams stats
-   #all_teams_stats_df = get_stats_for_all_teams(team_list_df, season)
-   #print(all_teams_stats_df)
+   all_teams_stats = get_stats_for_all_teams(team_list_df, season)
+   # all_teams_stats.to
    
    # convert all teams stats to dataframe
    
@@ -240,21 +241,22 @@ if __name__ == "__main__":
    #  data = json.load(f)
    # print(data)
    #print(convert_stats_into_dataframe(data))
-   data = pd.read_json('stats.json').to_dict('records')
+   # data = pd.read_json('stats.json').to_dict('records')
    #print(convert_stats_into_dataframe(data_df).head())
-   stats_df = convert_stats_into_dataframe(data)
-   stats_df["GF minute (91-105)"] = stats_df["GF minute (91-105)"].astype('str')
-   stats_df["GA minute (91-105)"] = stats_df["GA minute (91-105)"].astype('str')
-   stats_df["Biggest Loss Away"] = stats_df["Biggest Loss Away"].astype('str')
-   stats_df["Yellow Cards (91-105)"] = stats_df["Yellow Cards (91-105)"].astype('str')
-   stats_df["Red Cards (0-15)"] = stats_df["Red Cards (0-15)"].astype('str')
-   stats_df["Red Cards (16-30)"] = stats_df["Red Cards (16-30)"].astype('str')
-   stats_df["Red Cards (31-45)"] = stats_df["Red Cards (31-45)"].astype('str')
-   stats_df["Red Cards (46-60)"] = stats_df["Red Cards (46-60)"].astype('str')
-   stats_df["Red Cards (61-75)"] = stats_df["Red Cards (61-75)"].astype('str')
-   stats_df["Red Cards (76-90)"] = stats_df["Red Cards (76-90)"].astype('str')
+   stats_df = convert_stats_into_dataframe(all_teams_stats)
+   print(stats_df)
+   # stats_df["GF minute (91-105)"] = stats_df["GF minute (91-105)"].astype('str')
+   # stats_df["GA minute (91-105)"] = stats_df["GA minute (91-105)"].astype('str')
+   # stats_df["Biggest Loss Away"] = stats_df["Biggest Loss Away"].astype('str')
+   # stats_df["Yellow Cards (91-105)"] = stats_df["Yellow Cards (91-105)"].astype('str')
+   # stats_df["Red Cards (0-15)"] = stats_df["Red Cards (0-15)"].astype('str')
+   # stats_df["Red Cards (16-30)"] = stats_df["Red Cards (16-30)"].astype('str')
+   # stats_df["Red Cards (31-45)"] = stats_df["Red Cards (31-45)"].astype('str')
+   # stats_df["Red Cards (46-60)"] = stats_df["Red Cards (46-60)"].astype('str')
+   # stats_df["Red Cards (61-75)"] = stats_df["Red Cards (61-75)"].astype('str')
+   # stats_df["Red Cards (76-90)"] = stats_df["Red Cards (76-90)"].astype('str')
    
-   stats_df.to_parquet("final_stats.parquet", engine="fastparquet")
+   # stats_df.to_parquet("final_stats.parquet", engine="fastparquet")
          
   
 # -----------------RESERVED IDEAS---------------------------------------------  
